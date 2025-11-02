@@ -40,6 +40,9 @@ def get_args():
     parser.add_argument('--output', required=True, type=str, help='path to the output file destination')
     parser.add_argument('--max-len', default=128, type=int, help='maximum length of generated sequence')
     
+    # Decoding arguments
+    parser.add_argument('--beam-size', default=1, type=int, help='beam size for beam search (1 = greedy decoding)')
+    
     # BLEU computation arguments
     parser.add_argument('--bleu', action='store_true', help='If set, compute BLEU score after translation')
     parser.add_argument('--reference', type=str, help='Path to the reference file (one sentence per line, required if --bleu is set)')
@@ -65,12 +68,17 @@ def main(args):
 
     # Read input sentences
     try:
-        with open(args.input, encoding="utf-8") as f:
+        with open(args.input, encoding="utf-8", errors='strict') as f:
             src_lines = [line.strip() for line in f if line.strip()]
-    except UnicodeDecodeError:
-        # Try with latin-1 encoding if utf-8 fails
-        with open(args.input, encoding="latin-1") as f:
-            src_lines = [line.strip() for line in f if line.strip()]
+    except (UnicodeDecodeError, UnicodeError):
+        # Try with latin-1 encoding if utf-8 fails (handles binary/pickle files)
+        try:
+            with open(args.input, encoding="latin-1", errors='ignore') as f:
+                src_lines = [line.strip() for line in f if line.strip()]
+        except Exception:
+            # If still fails, file might be in different format
+            logging.warning(f"Could not read {args.input} as text file. Ensure input is raw text, not preprocessed binary.")
+            raise
 
     # Encode input sentences
     src_encoded = [torch.tensor(src_tokenizer.Encode(line, out_type=int)) for line in src_lines]
@@ -91,11 +99,7 @@ def main(args):
     model.load_state_dict(state_dict['model'])
     logging.info('Loaded a model from checkpoint {:s}'.format(args.checkpoint_path))
 
-    # Read input sentences
-    with open(args.input, encoding="utf-8") as f:
-        src_lines = [line.strip() for line in f if line.strip()]
-
-    # Encode input sentences
+    # Encode input sentences (src_lines already loaded earlier with encoding fallback)
     src_encoded = [torch.tensor(src_tokenizer.Encode(line, out_type=int, add_eos=True)) for line in src_lines]
     # trim to max_len
     max_seq_len = min(model.encoder.pos_embed.size(1), args.max_len)
@@ -163,14 +167,15 @@ def main(args):
             src_tokens, trg_in, trg_out, src_pad_mask, trg_pad_mask = make_batch(src_tokens, dummy_y)
 
             #-----------------------------------------
-            # Decode without teacher forcing
+            # Decode without teacher forcing (with beam search if beam_size > 1)
             prediction = decode(model=model,
                                       src_tokens=src_tokens,
                                       src_pad_mask=src_pad_mask,
                                       max_out_len=args.max_len,
                                       tgt_tokenizer=tgt_tokenizer,
                                       args=args,
-                                      device=DEVICE)
+                                      device=DEVICE,
+                                      beam_size=args.beam_size)
             #----------------------------------------
 
         # Remove BOS and decode each sentence
