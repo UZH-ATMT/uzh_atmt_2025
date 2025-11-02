@@ -32,3 +32,5 @@ wandb_config.txt
 *.out
 
 .DS_Store
+
+*.pt
