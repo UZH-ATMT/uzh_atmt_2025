@@ -1,0 +1,10 @@
+# Python requirements for ATMT Assignment
+# Use this for pip installation: pip install -r requirements_pip.txt
+
+torch>=2.0.0
+numpy>=1.20.0
+sentencepiece>=0.2.0
+sacrebleu>=2.1.0
+tqdm>=4.60.0
+pyyaml>=6.0
+wandb>=0.15.0
