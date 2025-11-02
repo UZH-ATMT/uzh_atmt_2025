@@ -34,3 +34,5 @@ wandb_config.txt
 .DS_Store
 
 *.pt
+
+.vscode
