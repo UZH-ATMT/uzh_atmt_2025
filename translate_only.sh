@@ -20,4 +20,7 @@ python translate.py \
     --tgt-tokenizer cz-en/tokenizers/en-bpe-8000.model \
     --checkpoint-path cz-en/checkpoints_run_2/checkpoint_best.pt \
     --output cz-en/output.txt \
-    --max-len 300
+    --max-len 300 \
+    --beam-size 5 \
+    --bleu \
+    --reference cz-en/data/prepared/test.en
