@@ -193,8 +193,17 @@ def main(args):
 
     # Compute BLEU score if requested
     if getattr(args, 'bleu', False):
-        with open(args.reference, encoding='utf-8') as ref_file:
-            references = [line.strip() for line in ref_file if line.strip()]
+        try:
+            with open(args.reference, encoding='utf-8', errors='strict') as ref_file:
+                references = [line.strip() for line in ref_file if line.strip()]
+        except (UnicodeDecodeError, UnicodeError):
+            # Try with latin-1 encoding if utf-8 fails (handles binary/pickle files)
+            try:
+                with open(args.reference, encoding='latin-1', errors='ignore') as ref_file:
+                    references = [line.strip() for line in ref_file if line.strip()]
+            except Exception:
+                logging.warning(f"Could not read {args.reference} as text file. Ensure reference is raw text, not preprocessed binary.")
+                raise
         if len(references) != len(translations):
             raise ValueError(f"Reference ({len(references)}) and hypothesis ({len(translations)}) line counts do not match.")
         bleu = sacrebleu.corpus_bleu(translations, [references])
