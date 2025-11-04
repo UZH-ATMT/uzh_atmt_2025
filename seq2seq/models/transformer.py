@@ -214,7 +214,12 @@ class MultiHeadedAttention(nn.Module):
         scores = torch.matmul(query, key.transpose(-2, -1))/math.sqrt(self.d_k)
         
         if mask is not None:
-            mask = mask.unsqueeze(1)
+            # Ensure mask has the right dimensions for attention scores
+            if mask.dim() == 3:  # (batch, seq_len, seq_len)
+                mask = mask.unsqueeze(1)  # (batch, 1, seq_len, seq_len)
+            elif mask.dim() == 2:  # (batch, seq_len) - padding mask
+                # Convert to attention mask format
+                mask = mask.unsqueeze(1).unsqueeze(1)  # (batch, 1, 1, seq_len)
             scores = scores.masked_fill(mask, float('-inf'))
             
         p_atten = torch.nn.functional.softmax(scores, dim=-1)
@@ -232,7 +237,19 @@ class ResidualConnection(nn.Module):
 
     def forward(self, x, sublayer: nn.Module):
         # sublayer
-        return x + self.drop(sublayer(self.norm(x)))
+        normalized = self.norm(x)
+        sublayer_output = sublayer(normalized)
+        dropped = self.drop(sublayer_output)
+        
+        # Debug shapes if there's a mismatch
+        if x.shape != dropped.shape:
+            print(f"Shape mismatch in ResidualConnection:")
+            print(f"x.shape: {x.shape}")
+            print(f"dropped.shape: {dropped.shape}")
+            print(f"normalized.shape: {normalized.shape}")
+            print(f"sublayer_output.shape: {sublayer_output.shape}")
+        
+        return x + dropped
 
 class DecoderBlock(nn.Module):
     ''' DecoderBlock: self-attention -> position-wise feed-forward (fully connected) layer'''

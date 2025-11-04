@@ -12,6 +12,11 @@ module load mamba
 source activate atmt
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=$CONDA_PREFIX/pkgs/cuda-toolkit
 
+mkdir -p ~/shares/cz-en/data/raw
+mkdir -p ./cz-en/data/prepared
+mkdir -p ./cz-en/tokenizers
+mkdir -p ./cz-en/logs
+mkdir -p ./cz-en/checkpoints
 
 # PREPARE DATA
 python preprocess.py \
@@ -31,7 +36,7 @@ python preprocess.py \
 # TRAIN
 # TRAIN (add --use-wandb to enable wandb logging)
 python train.py \
-    --cuda \
+#    --cuda \
     --data cz-en/data/prepared/ \
     --src-tokenizer cz-en/tokenizers/cz-bpe-8000.model \
     --tgt-tokenizer cz-en/tokenizers/en-bpe-8000.model \
