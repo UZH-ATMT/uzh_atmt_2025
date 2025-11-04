@@ -175,47 +175,54 @@ class TransformerDecoder(Seq2SeqDecoder):
         return logits
 
 class MultiHeadedAttention(nn.Module):
-    def __init__(self, n_heads: int, dim_embed: int, dropout: float = 0.0):
+    def __init__(self, n_heads: int, dim_embed: int, dropout: float = 0.0, shared_kv: bool = False):
         super(MultiHeadedAttention, self).__init__()
-        #super().__init__()  python 3.x
-        assert dim_embed % n_heads == 0 # check the h number
+        assert dim_embed % n_heads == 0
         self.d_k = dim_embed//n_heads
-        self.dim_embed = dim_embed    # 512
-        self.h = n_heads  # 8
+        self.dim_embed = dim_embed
+        self.h = n_heads
+        self.shared_kv = shared_kv
+        
         self.WQ = nn.Linear(dim_embed, dim_embed)
-        self.WK = nn.Linear(dim_embed, dim_embed)
-        self.WV = nn.Linear(dim_embed, dim_embed) 
+        
+        # Shared K,V projections: only one head worth of K,V
+        if shared_kv:
+            self.WK = nn.Linear(dim_embed, self.d_k)  # Single head dimension
+            self.WV = nn.Linear(dim_embed, self.d_k)  # Single head dimension
+        else:
+            self.WK = nn.Linear(dim_embed, dim_embed)
+            self.WV = nn.Linear(dim_embed, dim_embed)
+            
         self.linear = nn.Linear(dim_embed, dim_embed)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x_query, x_key, x_value, mask=None):
-        nbatch = x_query.size(0) # get batch size
-        # 1) Linear projections to get the multi-head query, key and value tensors
-        # x_query, x_key, x_value dimension: nbatch * seq_len * dim_embed
-        # LHS query, key, value dimensions: nbatch * h * seq_len * d_k
+        nbatch = x_query.size(0)
+        
+        # Query: always multi-head
         query = self.WQ(x_query).view(nbatch, -1, self.h, self.d_k).transpose(1,2)
-        key   = self.WK(x_key).view(nbatch, -1, self.h, self.d_k).transpose(1,2)
-        value = self.WV(x_value).view(nbatch, -1, self.h, self.d_k).transpose(1,2)
-        # 2) Attention
-        # scores has dimensions: nbatch * h * seq_len * seq_len
+        
+        if self.shared_kv:
+            # Key and Value: single head, then replicate across all heads
+            key = self.WK(x_key).view(nbatch, -1, 1, self.d_k).expand(-1, -1, self.h, -1).transpose(1,2)
+            value = self.WV(x_value).view(nbatch, -1, 1, self.d_k).expand(-1, -1, self.h, -1).transpose(1,2)
+        else:
+            key = self.WK(x_key).view(nbatch, -1, self.h, self.d_k).transpose(1,2)
+            value = self.WV(x_value).view(nbatch, -1, self.h, self.d_k).transpose(1,2)
+        
+        # Rest of the attention computation remains the same
         scores = torch.matmul(query, key.transpose(-2, -1))/math.sqrt(self.d_k)
-        # 3) Mask out padding tokens and future tokens
+        
         if mask is not None:
             mask.unsqueeze(dim=1)
-
             scores = scores.masked_fill(mask, float('-inf'))
-        # p_atten dimensions: nbatch * h * seq_len * seq_len
-        p_atten = torch.nn.functional.softmax(scores, dim=-1) # attention filter
+            
+        p_atten = torch.nn.functional.softmax(scores, dim=-1)
         p_atten = self.dropout(p_atten)
-        # x dimensions: nbatch * h * seq_len * d_k
-        # print("query shape:", query.shape)
-        # print("key shape:", key.shape)
-        # print("value shape:", value.shape)
-        # print("p_atten shape:", p_atten.shape)
-        x = torch.matmul(p_atten, value)  # filtered values
-        # x now has dimensions:nbatch * seq_len * dim_embed
+        x = torch.matmul(p_atten, value)
+        
         x = x.transpose(1, 2).contiguous().view(nbatch, -1, self.dim_embed)
-        return self.linear(x) # final linear layer
+        return self.linear(x)
 
 class ResidualConnection(nn.Module):
     def __init__(self, dim, dropout):

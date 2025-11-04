@@ -1,6 +1,7 @@
 
 # Venv
 .venv-atmt2025/
+.venv/
 # Python
 __pycache__/
 
