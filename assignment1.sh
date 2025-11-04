@@ -36,7 +36,7 @@ python preprocess.py \
 # TRAIN
 # TRAIN (add --use-wandb to enable wandb logging)
 python train.py \
-#    --cuda \
+    --cuda \
     --data cz-en/data/prepared/ \
     --src-tokenizer cz-en/tokenizers/cz-bpe-8000.model \
     --tgt-tokenizer cz-en/tokenizers/en-bpe-8000.model \
