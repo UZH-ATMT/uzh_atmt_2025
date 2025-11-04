@@ -108,7 +108,7 @@ class TransformerEncoder(Seq2SeqEncoder):
 
 class EncoderBlock(nn.Module):
     '''EncoderBlock: self-attention -> position-wise fully connected feed-forward layer'''
-    def __init__(self, dim_embed, dropout, n_heads, dim_ff, shared_kv=False):
+    def __init__(self, dim_embed, dropout, n_heads, dim_ff, shared_kv=True):
         super(EncoderBlock, self).__init__()
         self.atten = MultiHeadedAttention(n_heads, dim_embed, dropout, shared_kv=shared_kv)
         self.feed_forward = nn.Sequential(
@@ -175,7 +175,7 @@ class TransformerDecoder(Seq2SeqDecoder):
         return logits
 
 class MultiHeadedAttention(nn.Module):
-    def __init__(self, n_heads: int, dim_embed: int, dropout: float = 0.0, shared_kv: bool = False):
+    def __init__(self, n_heads: int, dim_embed: int, dropout: float = 0.0, shared_kv: bool = True):
         super(MultiHeadedAttention, self).__init__()
         assert dim_embed % n_heads == 0
         self.d_k = dim_embed//n_heads
@@ -236,7 +236,7 @@ class ResidualConnection(nn.Module):
 
 class DecoderBlock(nn.Module):
     ''' DecoderBlock: self-attention -> position-wise feed-forward (fully connected) layer'''
-    def __init__(self, dim_embed, n_heads, dropout, dim_ff, shared_kv=False):
+    def __init__(self, dim_embed, n_heads, dropout, dim_ff, shared_kv=True):
         super().__init__()
         self.atten1 = MultiHeadedAttention(n_heads, dim_embed,dropout, shared_kv=shared_kv)
         self.atten2 = MultiHeadedAttention(n_heads, dim_embed, dropout, shared_kv=shared_kv)
