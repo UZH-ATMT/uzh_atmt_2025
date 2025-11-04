@@ -108,9 +108,9 @@ class TransformerEncoder(Seq2SeqEncoder):
 
 class EncoderBlock(nn.Module):
     '''EncoderBlock: self-attention -> position-wise fully connected feed-forward layer'''
-    def __init__(self, dim_embed, dropout, n_heads, dim_ff):
+    def __init__(self, dim_embed, dropout, n_heads, dim_ff, shared_kv=False):
         super(EncoderBlock, self).__init__()
-        self.atten = MultiHeadedAttention(n_heads, dim_embed, dropout)
+        self.atten = MultiHeadedAttention(n_heads, dim_embed, dropout, shared_kv=shared_kv)
         self.feed_forward = nn.Sequential(
             nn.Linear(dim_embed, dim_ff),
             nn.ReLU(),
@@ -214,7 +214,7 @@ class MultiHeadedAttention(nn.Module):
         scores = torch.matmul(query, key.transpose(-2, -1))/math.sqrt(self.d_k)
         
         if mask is not None:
-            mask.unsqueeze(dim=1)
+            mask = mask.unsqueeze(1)
             scores = scores.masked_fill(mask, float('-inf'))
             
         p_atten = torch.nn.functional.softmax(scores, dim=-1)
@@ -236,10 +236,10 @@ class ResidualConnection(nn.Module):
 
 class DecoderBlock(nn.Module):
     ''' DecoderBlock: self-attention -> position-wise feed-forward (fully connected) layer'''
-    def __init__(self, dim_embed, n_heads, dropout, dim_ff):
+    def __init__(self, dim_embed, n_heads, dropout, dim_ff, shared_kv=False):
         super().__init__()
-        self.atten1 = MultiHeadedAttention(n_heads, dim_embed)
-        self.atten2 = MultiHeadedAttention(n_heads, dim_embed)
+        self.atten1 = MultiHeadedAttention(n_heads, dim_embed,dropout, shared_kv=shared_kv)
+        self.atten2 = MultiHeadedAttention(n_heads, dim_embed, dropout, shared_kv=shared_kv)
         self.feed_forward = nn.Sequential(
             nn.Linear(dim_embed, dim_ff),
             nn.ReLU(),
