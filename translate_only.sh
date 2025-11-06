@@ -5,7 +5,7 @@
 #SBATCH --mem=4GB
 #SBATCH --cpus-per-task=1
 #SBATCH --gpus=1
-#SBATCH --output=out_translate.out
+#SBATCH --output=out_translate_with_bleu.out
 
 module load gpu
 module load mamba
