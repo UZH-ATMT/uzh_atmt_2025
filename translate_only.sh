@@ -18,7 +18,7 @@ python translate.py \
     --input ~/shares/cz-en/data/raw/test.cz \
     --src-tokenizer cz-en/tokenizers/cz-bpe-8000.model \
     --tgt-tokenizer cz-en/tokenizers/en-bpe-8000.model \
-    --checkpoint-path cz-en/checkpoints_run_2/checkpoint_best.pt \
+    --checkpoint-path cz-en/checkpoints_assignment3/checkpoint_best.pt \
     --output cz-en/output_beam_search.txt \
     --max-len 300 \
     --beam-size 5 \
